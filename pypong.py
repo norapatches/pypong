@@ -3,7 +3,7 @@ import pygame, random, sys
 """
 pyPong
 made by Norbert Kovács-Wilczyński in March, 2024
-v 0.2
+v 0.3
 """
 
 BLK = (0, 0, 0)
@@ -27,7 +27,7 @@ class Ball:
         self.y = y
         self.dir_x = random_x
         self.dir_y = random_y
-        self.speed = 4
+        self.speed = 3.5
         self.rect = pygame.Rect(self.x, self.y, BALLSIZE, BALLSIZE)
     
     # DRAW THE BALL
@@ -50,7 +50,7 @@ class Ball:
     # ADJUST SPEED
     def ball_speed(self, total) -> None:
         if total != 0 and total % 5 == 0:
-            self.speed *= 1.1
+            self.speed *= 1.05
 
 # PLAYER 1/2
 class Player:
@@ -60,7 +60,7 @@ class Player:
         self.x = x
         self.y = y
         self.speed = 4
-        self.psize = WINDOWSIZE[1] / 6
+        self.psize = int(WINDOWSIZE[1] / 6)
         self.rect = pygame.Rect(self.x, self.y, BALLSIZE, self.psize)
     
     # DRAW THE PADDLE
@@ -85,17 +85,19 @@ class Player:
                 self.rect.move_ip(0, self.speed)
     
     # COLLIDE WITH WALLS
-    def check_bounds(self, screen_height) -> None:
-        if self.rect.top <= 0:
-            self.rect.top = 0
-        elif self.rect.bottom >= screen_height:
-            self.rect.bottom = screen_height
+    def check_bounds(self, field) -> None:
+        if self.rect.top <= field.top:
+            self.rect.top = field.top
+        elif self.rect.bottom >= field.bottom:
+            self.rect.bottom = field.bottom
     
     # UPDATE SCORE
     def bonus(self, score, x, y) -> None:
         self.score = score
         if self.score != 0 and self.score % 10 == 0:
-            self.psize *= 1.1
+            self.psize *= 1.2
+            if self.psize > WINDOWSIZE[1] / 3:
+                self.psize = WINDOWSIZE[1] / 3
             self.rect = pygame.Rect(x, y, BALLSIZE, self.psize)
 
 # CPU OPPONENT
@@ -105,7 +107,7 @@ class CPU:
         self.x = x
         self.y = y
         self.speed = 4
-        self.psize = WINDOWSIZE[1] / 6
+        self.psize = int(WINDOWSIZE[1] / 6)
         self.rect = pygame.Rect(self.x, self.y, BALLSIZE, self.psize)
     
     # DRAW THE PADDLE
@@ -120,17 +122,20 @@ class CPU:
             self.rect.move_ip(0, -self.speed)
     
     # COLLIDE WITH WALLS
-    def check_bounds(self, screen_height) -> None:
-        if self.rect.top <= 0:
-            self.rect.top = 0
-        elif self.rect.bottom >= screen_height:
-            self.rect.bottom = screen_height
+    def check_bounds(self, field) -> None:
+        if self.rect.top <= field.top:
+            self.rect.top = field.top
+        elif self.rect.bottom >= field.bottom:
+            self.rect.bottom = field.bottom
     
     # UPDATE SCORE
     def bonus(self, score, x, y) -> None:
         self.score = score
         if self.score != 0 and self.score % 10 == 0:
-            self.psize *= 1.1
+            self.psize *= 1.2
+            self.speed *= 1.05
+            if self.psize > WINDOWSIZE[1] / 3:
+                self.psize = WINDOWSIZE[1] / 3
             self.rect = pygame.Rect(x, y, BALLSIZE, self.psize)
 
 # THE GAME CLASS
@@ -151,7 +156,8 @@ class TheGame:
         pygame.display.set_caption('pyPong')
         
         # PLAYFIELD
-        # TODO
+        self.field = pygame.Rect(0, WINDOWSIZE[1] / 7,
+                                 WINDOWSIZE[0], (WINDOWSIZE[1] / 7) * 5)
         
         # AUDIO SETUP
         pygame.mixer.init()
@@ -376,24 +382,24 @@ class TheGame:
             
             # FUNCTIONS TO MOVE PADDLES
             self.player.move()
-            self.player.check_bounds(self.screen.get_height())
+            self.player.check_bounds(self.field)
             if mode == '1PvsCPU':
                 self.opponent.cpu_move(self.ball)
             elif mode == '1Pvs2P':
                 self.opponent.move()
-            self.opponent.check_bounds(self.screen.get_height())
+            self.opponent.check_bounds(self.field)
             
             # LOGIC FOR BALL TO MOVE AND BOUNCE OFF WALLS
             self.ball.move()
-            if self.ball.rect.top <= 0 or self.ball.rect.bottom >= self.screen.get_height():
+            if self.ball.rect.top <= self.field.top or self.ball.rect.bottom >= self.field.bottom:
                 self.ball.bounce('y', self.sfx_blip)
             
             # LOGIC FOR PENALTY FOR PLAYER
-            if self.ball.rect.left <= 0:
+            if self.ball.rect.left <= self.field.left:
                 break
             
             # LOGIC FOR PENALTY FOR CPU/2P
-            if self.ball.rect.right >= self.screen.get_width():
+            if self.ball.rect.right >= self.field.right:
                 break
             
             # LOGIC FOR COUNTING SCORES FOR PLAYER
@@ -416,6 +422,10 @@ class TheGame:
             
             # DRAW THE ELEMENTS
             self.screen.fill(BLK)
+            
+            # DRAW THE FIELD
+            pygame.draw.rect(self.screen, WHT, self.field, 1)
+            
             self.ball.draw(self.screen)
             self.player.draw(self.screen)
             self.opponent.draw(self.screen)
@@ -426,12 +436,22 @@ class TheGame:
                                 (self.screen.get_width() / 2, self.screen.get_height()))
             
             # DISPLAY SCORES
-            player_score = self.score_font.render(f'{self.scores[0]}', True, WHT)
-            opponent_score = self.score_font.render(f'{self.scores[1]}', True, WHT)
+            player_score = self.score_font.render(f'SCORE: {self.scores[0]}', True, WHT)
+            opponent_score = self.score_font.render(f'SCORE: {self.scores[1]}', True, WHT)
             
             self.screen.blit(player_score, (self.screen.get_width() / 4 - player_score.get_width() / 2, 20))
             self.screen.blit(opponent_score, ((self.screen.get_width() / 4) * 3 - opponent_score.get_width() / 2, 20))
             
+            # DISPLAY PLAYER NAMES
+            if mode == '1PvsCPU':
+                player_name = self.title_font.render('PLAYER 1', True, WHT)
+                opponent_name = self.title_font.render('COMPUTER', True, WHT)
+            elif mode == '1Pvs2P':
+                player_name = self.title_font.render('PLAYER 1', True, WHT)
+                opponent_name = self.title_font.render('PLAYER 2', True, WHT)
+            
+            self.screen.blit(player_name, (self.screen.get_width() / 4 - player_name.get_width() / 2, self.screen.get_height() - 50))
+            self.screen.blit(opponent_name, ((self.screen.get_width() / 4) * 3 - opponent_name.get_width() / 2, self.screen.get_height() - 50))
             
             pygame.display.flip()
             
