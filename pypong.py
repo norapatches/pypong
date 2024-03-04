@@ -24,7 +24,7 @@ class Ball:
         self.speed = 4
         self.rect = pygame.Rect(self.x, self.y, BALLSIZE, BALLSIZE)
     
-    # DRAW THEW BALL
+    # DRAW THE BALL
     def draw(self, screen) -> None:
         pygame.draw.rect(screen, WHT, self.rect)
     
