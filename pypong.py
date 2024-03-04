@@ -1,5 +1,11 @@
 import pygame, random, sys
 
+"""
+pyPong
+made by Norbert Kovács-Wilczyński in March, 2024
+v 0.2
+"""
+
 BLK = (0, 0, 0)
 WHT = (255, 255, 255)
 WINDOWSIZE = (800, 600)
